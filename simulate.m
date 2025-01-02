@@ -9,6 +9,9 @@ classdef simulate
         z
         H
         toaPos
+        A
+        Q
+        w_bias
     end
 
     methods
@@ -64,5 +67,23 @@ classdef simulate
                 end
             end
         end
+
+        function obj = getQ(obj)
+            obj.Q = zeros(2, 2, length(obj.noiseVariance));
+            step = 4;
+            pos = (step-1) * ones(size(obj.toaPos(:, :, step, :)));
+            toaVel = (obj.toaPos(:, :, step-1, :) - obj.toaPos(:, :, step-2, :)) / 0.1;
+            errorPos = pos - obj.toaPos(:, :, step, :) - toaVel * 0.1;
+            obj.w_bias = squeeze(mean(errorPos, 2));    % 2x5
+
+            for iter = 1:obj.iteration
+                for noise = 1:length(obj.noiseVariance)
+                    x = squeeze(errorPos(:,iter,1,1));
+                    obj.Q(:, :, noise) = mean() - obj.w_bias(:, noise) * obj.w_bias(:, noise)';
+                end
+            end
+        end
+
+
     end
 end
