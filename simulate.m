@@ -71,17 +71,21 @@ classdef simulate
         function obj = getQ(obj)
             obj.Q = zeros(2, 2, length(obj.noiseVariance));
             step = 4;
-            pos = (step-1) * ones(size(obj.toaPos(:, :, step, :)));
-            toaVel = (obj.toaPos(:, :, step-1, :) - obj.toaPos(:, :, step-2, :)) / 0.1;
-            errorPos = pos - obj.toaPos(:, :, step, :) - toaVel * 0.1;
+            pos = step * ones(size(obj.toaPos(:, :, step, :)));
+            toaVel = (obj.toaPos(:, :, step-1, :) - obj.toaPos(:, :, step-2, :)) / 0.1;   % pos 2, 1
+            errorPos = pos - obj.toaPos(:, :, step, :) - toaVel * 0.1;              % pos 
             obj.w_bias = squeeze(mean(errorPos, 2));    % 2x5
-
+            x = squeeze(errorPos);
             for iter = 1:obj.iteration
                 for noise = 1:length(obj.noiseVariance)
-                    x = squeeze(errorPos(:,iter,1,1));
-                    obj.Q(:, :, noise) = mean() - obj.w_bias(:, noise) * obj.w_bias(:, noise)';
+                    xxT(:,:,iter,noise) = x(:,iter,noise)*x(:,iter,noise)';
                 end
             end
+            ExxT = squeeze(mean(xxT,3));
+            for noise = 1:length(obj.noiseVariance)
+                obj.Q(:, :, noise) = ExxT(:,:,noise) - obj.w_bias(:, noise) * obj.w_bias(:, noise)';
+            end
+            
         end
 
 
