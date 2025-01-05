@@ -148,6 +148,59 @@ classdef simulate
             end
         end
 
+        function obj = optimizeParam(obj)
+            alphamax = 9;
+            kfOptix = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance),alphamax);
+            kfOptiP = zeros(2, 2, obj.iteration, obj.numPoints, length(obj.noiseVariance),alphamax);
+            for a = 1:alphamax
+                alpha = a / 10;
+                for iter = 1:obj.iteration
+                    Qbuf = obj.Q;
+                    for step = 1:obj.numPoints
+                        for noise = 1:length(obj.noiseVariance)
+                            switch step
+                                case 1
+                                    kfOptix(:,iter,step,noise,a) = [0; 0];
+                                    kfOptiP(:,:,iter,step,noise,a) = obj.P0(:, :, noise);
+                                    velocity = 0;
+                                case 2
+                                    kfOptix(:,iter,step,noise,a) = obj.toaPos(:, iter, step, noise);
+                                    kfOptiP(:,:,iter,step,noise,a) = kfOptiP(:,:,iter,step-1,noise,a);
+                                case 3
+                                    kfOptix(:,iter,step,noise,a) = obj.toaPos(:, iter, step, noise);
+                                    kfOptiP(:,:,iter,step,noise,a) = kfOptiP(:,:,iter,step-1,noise,a);
+                                    velocity = (kfOptix(:,iter,step,noise,a) - kfOptix(:,iter,step-1,noise,a)) / 0.1;
+                                otherwise
+                                    [kfOptix(:,iter,step,noise,a), kfOptiP(:,:,iter,step,noise,a)] = ToaKf(kfOptix(:,iter,step-1,noise,a), kfOptiP(:,:,iter,step-1,noise,a), 0, velocity, obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                    velocity = (kfOptix(:,iter,step,noise,a) - kfOptix(:,iter,step-1,noise,a)) / 0.1;
+                            end
+                        end
+                        Qbuf(:, :, noise) = Qbuf(:, :, noise)*exp(-alpha*(step-3));
+                        % Qbuf(:, :, noise) = Qbuf(:, :, noise)*alpha;
+                    end
+                end
+            end
+            optiRMSE = zeros(length(obj.noiseVariance),alphamax);
+            for iter = 1:obj.iteration
+                for step = 2:obj.numPoints
+                    pos = [step-1; step-1];
+                    for noise = 1:length(obj.noiseVariance)
+                        for a = 1:alphamax
+                            optiRMSE(noise,a) = optiRMSE(noise,a) + norm(pos - kfOptix(:, iter, step, noise,a));
+                        end
+                    end
+                end
+            end
+            optiRMSE = optiRMSE / (obj.iteration * (obj.numPoints-1));
+            [minRMSE, minIdx] = min(optiRMSE, [], 2);
+            figure;
+            semilogx(obj.noiseVariance, minRMSE, 'o-');
+            xlabel('Noise Variance');
+            ylabel('RMSE');
+            disp('optimal gamma: ');
+            disp(minIdx);
+        end
+
         function obj = resultPlot(obj)
             toaRMSE = zeros(length(obj.noiseVariance),1);
             kf1RMSE = zeros(length(obj.noiseVariance),1);

@@ -4,8 +4,7 @@ function [xhat, Phat] = ToaKf(x, P, B, u, A, Q, bias, H, R, z)
     xhat = A * x + B * u + bias;
     Phat = A * P * A' + Q;
     
-    % Update
-    
+    % Estimation
     K = Phat * H' * pinv(H * Phat * H' + R);
     xhat = xhat + K * (z - H * xhat);
     Phat = (eye(size(K, 1)) - K * H) * Phat;
