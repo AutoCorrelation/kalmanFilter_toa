@@ -174,9 +174,9 @@ classdef simulate
                                     [kfOptix(:,iter,step,noise,a), kfOptiP(:,:,iter,step,noise,a)] = ToaKf(kfOptix(:,iter,step-1,noise,a), kfOptiP(:,:,iter,step-1,noise,a), 0, velocity, obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
                                     velocity = (kfOptix(:,iter,step,noise,a) - kfOptix(:,iter,step-1,noise,a)) / 0.1;
                             end
+                            Qbuf(:, :, noise) = Qbuf(:, :, noise)*exp(-alpha*(step-3));
+                            % Qbuf(:, :, noise) = Qbuf(:, :, noise)*alpha;
                         end
-                        Qbuf(:, :, noise) = Qbuf(:, :, noise)*exp(-alpha*(step-3));
-                        % Qbuf(:, :, noise) = Qbuf(:, :, noise)*alpha;
                     end
                 end
             end
@@ -193,7 +193,7 @@ classdef simulate
             end
             optiRMSE = optiRMSE / (obj.iteration * (obj.numPoints-1));
             [minRMSE, minIdx] = min(optiRMSE, [], 2);
-            figure;
+            % figure;
             semilogx(obj.noiseVariance, minRMSE, 'o-');
             xlabel('Noise Variance');
             ylabel('RMSE');
