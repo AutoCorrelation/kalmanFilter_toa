@@ -14,6 +14,7 @@ classdef simulate
         w_bias
         P0
         R
+        liveR
         kf1x
         kf1P
         ukfx
@@ -142,7 +143,15 @@ classdef simulate
                                 obj.kf1P(:,:,iter,step,noise) = obj.kf1P(:,:,iter,step-1,noise);
                                 velocity(:, noise) = (obj.kf1x(:,iter,step,noise) - obj.kf1x(:,iter,step-1,noise)) / 0.1;
                             otherwise
-                                [obj.kf1x(:,iter,step,noise), obj.kf1P(:,:,iter,step,noise)] = ToaKf(obj.kf1x(:,iter,step-1,noise), obj.kf1P(:,:,iter,step-1,noise), 0.1, velocity(:, noise), obj.A, obj.Q(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                obj.liveR(:,:,iter,step,noise) = [4*obj.noiseVariance(noise)*(obj.rangingInfo(1,iter,step,noise)^2+obj.rangingInfo(2,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(1,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(1,iter,step,noise)^2) -4*obj.noiseVariance(noise)*(obj.rangingInfo(2,iter,step,noise)^2) -4*obj.noiseVariance(noise)*(obj.rangingInfo(2,iter,step,noise)^2) 0;...
+                                    4*obj.noiseVariance(noise)*(obj.rangingInfo(1,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(1,iter,step,noise)^2+obj.rangingInfo(3,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(1,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(3,iter,step,noise)^2) 0 -4*obj.noiseVariance(noise)*(obj.rangingInfo(3,iter,step,noise)^2);...
+                                    4*obj.noiseVariance(noise)*(obj.rangingInfo(1,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(1,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(1,iter,step,noise)^2+obj.rangingInfo(4,iter,step,noise)^2) 0 4*obj.noiseVariance(noise)*(obj.rangingInfo(4,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(4,iter,step,noise)^2);...
+                                    -4*obj.noiseVariance(noise)*(obj.rangingInfo(2,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(3,iter,step,noise)^2) 0 4*obj.noiseVariance(noise)*(obj.rangingInfo(2,iter,step,noise)^2+obj.rangingInfo(3,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(2,iter,step,noise)^2) -4*obj.noiseVariance(noise)*(obj.rangingInfo(3,iter,step,noise)^2);...
+                                    -4*obj.noiseVariance(noise)*(obj.rangingInfo(2,iter,step,noise)^2) 0 4*obj.noiseVariance(noise)*(obj.rangingInfo(4,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(2,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(2,iter,step,noise)^2+obj.rangingInfo(4,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(4,iter,step,noise)^2);...
+                                    0 -4*obj.noiseVariance(noise)*(obj.rangingInfo(3,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(4,iter,step,noise)^2) -4*obj.noiseVariance(noise)*(obj.rangingInfo(3,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(4,iter,step,noise)^2) 4*obj.noiseVariance(noise)*(obj.rangingInfo(3,iter,step,noise)^2+obj.rangingInfo(4,iter,step,noise)^2)
+                                    ];
+                                % [obj.kf1x(:,iter,step,noise), obj.kf1P(:,:,iter,step,noise)] = ToaKf(obj.kf1x(:,iter,step-1,noise), obj.kf1P(:,:,iter,step-1,noise), 0.1, velocity(:, noise), obj.A, obj.Q(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                [obj.kf1x(:,iter,step,noise), obj.kf1P(:,:,iter,step,noise)] = ToaKf(obj.kf1x(:,iter,step-1,noise), obj.kf1P(:,:,iter,step-1,noise), 0.1, velocity(:, noise), obj.A, obj.Q(:, :, noise), obj.w_bias(:, noise), obj.H, obj.liveR(:,:,iter,step,noise), obj.z(:, iter, step, noise));
                                 velocity(:, noise) = (obj.kf1x(:,iter,step,noise) - obj.kf1x(:,iter,step-1,noise)) / 0.1;
                         end
                     end
@@ -155,7 +164,7 @@ classdef simulate
             kfOptix = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance),alphamax);
             kfOptiP = zeros(2, 2, obj.iteration, obj.numPoints, length(obj.noiseVariance),alphamax);
             for a = 1:alphamax
-                alpha = 0.45 + a * 0.05;
+                alpha = 0.1 * a;
                 for iter = 1:obj.iteration
                     Qbuf = obj.Q;
                     for step = 1:obj.numPoints
@@ -173,7 +182,8 @@ classdef simulate
                                     kfOptiP(:,:,iter,step,noise,a) = kfOptiP(:,:,iter,step-1,noise,a);
                                     velocity(:, noise) = (kfOptix(:,iter,step,noise,a) - kfOptix(:,iter,step-1,noise,a)) / 0.1;
                                 otherwise
-                                    [kfOptix(:,iter,step,noise,a), kfOptiP(:,:,iter,step,noise,a)] = ToaKf(kfOptix(:,iter,step-1,noise,a), kfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                    % [kfOptix(:,iter,step,noise,a), kfOptiP(:,:,iter,step,noise,a)] = ToaKf(kfOptix(:,iter,step-1,noise,a), kfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                    [kfOptix(:,iter,step,noise,a), kfOptiP(:,:,iter,step,noise,a)] = ToaKf(kfOptix(:,iter,step-1,noise,a), kfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.liveR(:, :,iter, step, noise), obj.z(:, iter, step, noise));
                                     velocity(:, noise) = (kfOptix(:,iter,step,noise,a) - kfOptix(:,iter,step-1,noise,a)) / 0.1;
                             end
                             % Qbuf(:, :, noise) = Qbuf(:, :, noise)*exp(-alpha*(step-3)); % 0.04 + a * 0.01: 8 7 7 5 3 : 0.12 0.11 0.11 0.09 0.07
@@ -206,7 +216,7 @@ classdef simulate
             kfOptix = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance),alphamax);
             kfOptiP = zeros(2, 2, obj.iteration, obj.numPoints, length(obj.noiseVariance),alphamax);
             for a = 1:alphamax
-                alpha = 0.15 + a *0.05; % 0.45 45 45 35 25
+                alpha = 0.15 + 0.05*a;
                 for iter = 1:obj.iteration
                     Qbuf = obj.Q;
                     for step = 1:obj.numPoints
@@ -226,7 +236,8 @@ classdef simulate
                                 otherwise
                                     Qbuf(:, :, noise) = obj.Q(:,:,noise)*exp(-alpha*(step-3));
 
-                                    [kfOptix(:,iter,step,noise,a), kfOptiP(:,:,iter,step,noise,a)] = ToaKf(kfOptix(:,iter,step-1,noise,a), kfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                    % [kfOptix(:,iter,step,noise,a), kfOptiP(:,:,iter,step,noise,a)] = ToaKf(kfOptix(:,iter,step-1,noise,a), kfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                    [kfOptix(:,iter,step,noise,a), kfOptiP(:,:,iter,step,noise,a)] = ToaKf(kfOptix(:,iter,step-1,noise,a), kfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.liveR(:, :,iter, step, noise), obj.z(:, iter, step, noise));
                                     velocity(:, noise) = (kfOptix(:,iter,step,noise,a) - kfOptix(:,iter,step-1,noise,a)) / 0.1;
                             end
                             
@@ -248,7 +259,7 @@ classdef simulate
             optiRMSE = optiRMSE / (obj.iteration * (obj.numPoints-1));
             [minRMSE, minIdx] = min(optiRMSE, [], 2);
             % figure;
-            semilogx(obj.noiseVariance, minRMSE, 'o-','displayName','Q2');
+            semilogx(obj.noiseVariance, minRMSE, 'o-','displayName','Q2_1');
             disp('optimal gamma: ');
             disp(minIdx);
         end
@@ -260,7 +271,7 @@ classdef simulate
             kfOptiP = zeros(2, 2, obj.iteration, obj.numPoints, numVar,alphamax);
             val = zeros(2, 2, numVar);
             for a = 1:alphamax
-                alpha = 0.4 + 0.02 * a;
+                alpha = 0.1 * a;
                 for iter = 1:obj.iteration
                     Qbuf = obj.Q;
                     for step = 1:obj.numPoints
@@ -278,7 +289,8 @@ classdef simulate
                                     kfOptiP(:,:,iter,step,noise,a) = kfOptiP(:,:,iter,step-1,noise,a);
                                     velocity(:, noise) = (kfOptix(:,iter,step,noise,a) - kfOptix(:,iter,step-1,noise,a)) / 0.1;
                                 otherwise
-                                    [kfOptix(:,iter,step,noise,a), kfOptiP(:,:,iter,step,noise,a), val(:,:,noise)] = ToaKf_modified(kfOptix(:,iter,step-1,noise,a), kfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                    % [kfOptix(:,iter,step,noise,a), kfOptiP(:,:,iter,step,noise,a), val(:,:,noise)] = ToaKf_modified(kfOptix(:,iter,step-1,noise,a), kfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                    [kfOptix(:,iter,step,noise,a), kfOptiP(:,:,iter,step,noise,a), val(:,:,noise)] = ToaKf_modified(kfOptix(:,iter,step-1,noise,a), kfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.liveR(:, :, iter, step, noise), obj.z(:, iter, step, noise));
                                     velocity(:, noise) = (kfOptix(:,iter,step,noise,a) - kfOptix(:,iter,step-1,noise,a)) / 0.1;
                                     Qbuf(:, :, noise) = Qbuf(:, :, noise)*alpha + (1-alpha)*val(:,:,noise); % 0.7~0.8
                             end
@@ -325,7 +337,8 @@ classdef simulate
                                 obj.ukfP(:,:,iter,step,noise) = obj.ukfP(:,:,iter,step-1,noise);
                                 velocity(:, noise) = (obj.ukfx(:,iter,step,noise) - obj.ukfx(:,iter,step-1,noise)) / 0.1;
                             otherwise
-                                [obj.ukfx(:,iter,step,noise), obj.ukfP(:,:,iter,step,noise)] = ToaUKF(obj.ukfx(:,iter,step-1,noise), obj.ukfP(:,:,iter,step-1,noise), 0.1, velocity(:, noise), obj.A, obj.Q(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                % [obj.ukfx(:,iter,step,noise), obj.ukfP(:,:,iter,step,noise)] = ToaUKF(obj.ukfx(:,iter,step-1,noise), obj.ukfP(:,:,iter,step-1,noise), 0.1, velocity(:, noise), obj.A, obj.Q(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                [obj.ukfx(:,iter,step,noise), obj.ukfP(:,:,iter,step,noise)] = ToaUKF(obj.ukfx(:,iter,step-1,noise), obj.ukfP(:,:,iter,step-1,noise), 0.1, velocity(:, noise), obj.A, obj.Q(:, :, noise), obj.w_bias(:, noise), obj.H, obj.liveR(:, :, iter, step, noise), obj.z(:, iter, step, noise));
                                 velocity(:, noise) = (obj.ukfx(:,iter,step,noise) - obj.ukfx(:,iter,step-1,noise)) / 0.1;
                         end
                     end
@@ -358,7 +371,8 @@ classdef simulate
                                 otherwise
                                     Qbuf(:, :, noise) = obj.Q(:,:,noise)*exp(-alpha*(step-3));
 
-                                    [ukfOptix(:,iter,step,noise,a), ukfOptiP(:,:,iter,step,noise,a)] = ToaUKF(ukfOptix(:,iter,step-1,noise,a), ukfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                    % [ukfOptix(:,iter,step,noise,a), ukfOptiP(:,:,iter,step,noise,a)] = ToaUKF(ukfOptix(:,iter,step-1,noise,a), ukfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.R(:, :, step, noise), obj.z(:, iter, step, noise));
+                                    [ukfOptix(:,iter,step,noise,a), ukfOptiP(:,:,iter,step,noise,a)] = ToaUKF(ukfOptix(:,iter,step-1,noise,a), ukfOptiP(:,:,iter,step-1,noise,a), 0.1 , velocity(:, noise), obj.A, Qbuf(:, :, noise), obj.w_bias(:, noise), obj.H, obj.liveR(:, :, iter, step, noise), obj.z(:, iter, step, noise));
                                     velocity(:, noise) = (ukfOptix(:,iter,step,noise,a) - ukfOptix(:,iter,step-1,noise,a)) / 0.1;
                             end
                             
@@ -397,25 +411,26 @@ classdef simulate
                     for noise = 1:length(obj.noiseVariance)
                         toaRMSE(noise,1) = toaRMSE(noise,1) + norm(pos - obj.toaPos(:, iter, step, noise));
                         kf1RMSE(noise,1) = kf1RMSE(noise,1) + norm(pos - obj.kf1x(:, iter, step, noise));
-                        ukfRMSE(noise,1) = ukfRMSE(noise,1) + norm(pos - obj.ukfx(:, iter, step, noise));
+                        % ukfRMSE(noise,1) = ukfRMSE(noise,1) + norm(pos - obj.ukfx(:, iter, step, noise));
                     end
                 end
             end
 
             toaRMSE = toaRMSE / (obj.iteration * (obj.numPoints-1));
             kf1RMSE = kf1RMSE / (obj.iteration * (obj.numPoints-1));
-            ukfRMSE = ukfRMSE / (obj.iteration * (obj.numPoints-1));
+            % ukfRMSE = ukfRMSE / (obj.iteration * (obj.numPoints-1));
 
             figure;
             semilogx(obj.noiseVariance, toaRMSE, 'o-','DisplayName','TOA');
             hold on;
             semilogx(obj.noiseVariance, kf1RMSE, 'o-','DisplayName','KF1');
-            semilogx(obj.noiseVariance, ukfRMSE, 'o-','DisplayName','UKF');
+            % semilogx(obj.noiseVariance, ukfRMSE, 'o-','DisplayName','UKF');
             xlabel('Noise Variance');
             ylabel('RMSE');
             legend;
         end
     end
 end
+
 
 
