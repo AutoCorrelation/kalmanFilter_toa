@@ -19,6 +19,8 @@ classdef simulate
         kf1P
         ukfx
         ukfP
+        pfx
+        pfw
     end
 
     methods
@@ -397,6 +399,33 @@ classdef simulate
             semilogx(obj.noiseVariance, minRMSE, 'o-','displayName','Q4');
             disp('optimal gamma: ');
             disp(minIdx);
+        end
+
+        function obj = ToaPF(obj)
+            obj.pfx = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance));
+            obj.pfw = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance));
+            for iter = 1:obj.iteration
+                for step = 1:obj.numPoints
+                    for noise = 1:length(obj.noiseVariance)
+                        switch step
+                            case 1
+                                obj.pfx(:,iter,step,noise) = [0; 0];
+                                obj.pfw(:,iter,step,noise) = obj.P0(:, :, noise);
+                                velocity = zeros(2, length(obj.noiseVariance));
+                            case 2
+                                obj.pfx(:,iter,step,noise) = obj.toaPos(:, iter, step, noise);
+                                obj.pfw(:,iter,step,noise) = obj.ukfP(:,:,iter,step-1,noise);
+                            case 3
+                                obj.pfx(:,iter,step,noise) = obj.toaPos(:, iter, step, noise);
+                                obj.pfw(:,iter,step,noise) = obj.ukfP(:,:,iter,step-1,noise);
+                                velocity(:, noise) = (obj.ukfx(:,iter,step,noise) - obj.ukfx(:,iter,step-1,noise)) / 0.1;
+                            otherwise
+                                [obj.pfx(:,iter,step,noise), obj.pfw(:,iter,step,noise)] = ToaUKF(obj.ukfx(:,iter,step-1,noise), obj.ukfP(:,:,iter,step-1,noise), 0.1, velocity(:, noise), obj.A, obj.Q(:, :, noise), obj.w_bias(:, noise), obj.H, obj.liveR(:, :, iter, step, noise), obj.z(:, iter, step, noise));
+                                velocity(:, noise) = (obj.ukfx(:,iter,step,noise) - obj.ukfx(:,iter,step-1,noise)) / 0.1;
+                        end
+                    end
+                end
+            end
         end
 
 
