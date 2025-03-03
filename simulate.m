@@ -19,8 +19,8 @@ classdef simulate
         kf1P
         ukfx
         ukfP
-        pfx
-        pfw
+        ptx
+        pt
     end
 
     methods
@@ -401,28 +401,28 @@ classdef simulate
             disp(minIdx);
         end
 
-        function obj = ToaPF(obj)
-            obj.pfx = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance));
-            obj.pfw = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance));
-            for iter = 1:obj.iteration
-                for step = 1:obj.numPoints
-                    for noise = 1:length(obj.noiseVariance)
-                        switch step
-                            case 1
-                                obj.pfx(:,iter,step,noise) = [0; 0];
-                                obj.pfw(:,iter,step,noise) = obj.P0(:, :, noise);
-                                velocity = zeros(2, length(obj.noiseVariance));
-                            case 2
-                                obj.pfx(:,iter,step,noise) = obj.toaPos(:, iter, step, noise);
-                                obj.pfw(:,iter,step,noise) = obj.ukfP(:,:,iter,step-1,noise);
-                            case 3
-                                obj.pfx(:,iter,step,noise) = obj.toaPos(:, iter, step, noise);
-                                obj.pfw(:,iter,step,noise) = obj.ukfP(:,:,iter,step-1,noise);
-                                velocity(:, noise) = (obj.ukfx(:,iter,step,noise) - obj.ukfx(:,iter,step-1,noise)) / 0.1;
-                            otherwise
-                                [obj.pfx(:,iter,step,noise), obj.pfw(:,iter,step,noise)] = ToaUKF(obj.ukfx(:,iter,step-1,noise), obj.ukfP(:,:,iter,step-1,noise), 0.1, velocity(:, noise), obj.A, obj.Q(:, :, noise), obj.w_bias(:, noise), obj.H, obj.liveR(:, :, iter, step, noise), obj.z(:, iter, step, noise));
-                                velocity(:, noise) = (obj.ukfx(:,iter,step,noise) - obj.ukfx(:,iter,step-1,noise)) / 0.1;
-                        end
+        function obj = ToaParticleFilter(obj)
+            obj.ptx = zeros(2, obj.numPoints, length(obj.noiseVariance));
+            obj.pt = zeros(2, 1e3, obj.numPoints, length(obj.noiseVariance));
+            iter = 1;
+            for step = 1:obj.numPoints
+                for noise = 1:length(obj.noiseVariance)
+                    switch step
+                        case 1
+                            obj.ptx(:,step,noise) = [0; 0];
+                            % obj.pfw(:,iter,step,noise) = obj.P0(:, :, noise);
+                            velocity = zeros(2, length(obj.noiseVariance));
+                        case 2
+                            obj.ptx(:,step,noise) = obj.toaPos(:, iter, step, noise);
+                            % obj.pfw(:,iter,step,noise) = obj.pfw(:,:,iter,step-1,noise);
+                        case 3
+                            obj.ptx(:,step,noise) = obj.toaPos(:, iter, step, noise);
+                            % obj.pfw(:,iter,step,noise) = obj.pfw(:,:,iter,step-1,noise);
+                            velocity(:, noise) = (obj.ptx(:,step,noise) - obj.ptx(:,step-1,noise)) / 0.1;
+                            [obj.ptx(:,step,noise), obj.pt(:,: ,step,noise)] = ToaPF(obj.ptx(:,step,noise), 0.1, velocity(:, noise), obj.A, obj.Q(:, :, noise), obj.w_bias(:, noise), obj.H, obj.z(:, iter, step, noise));
+                        otherwise
+                            [obj.ptx(:,step,noise), obj.pt(:,: ,step,noise)] = ToaPF(obj.pt(:,:,step-1,noise), 0.1, velocity(:, noise), obj.A, obj.Q(:, :, noise), obj.w_bias(:, noise), obj.H, obj.z(:, iter, step, noise));
+                            velocity(:, noise) = (obj.ptx(:,step,noise) - obj.ptx(:,step-1,noise)) / 0.1;
                     end
                 end
             end
@@ -434,6 +434,7 @@ classdef simulate
             toaRMSE = zeros(length(obj.noiseVariance),1);
             kf1RMSE = zeros(length(obj.noiseVariance),1);
             ukfRMSE = zeros(length(obj.noiseVariance),1);
+            pfRMSE = zeros(length(obj.noiseVariance),1);
             for iter = 1:obj.iteration
                 for step = 2:obj.numPoints
                     pos = [step-1; step-1];
@@ -441,19 +442,28 @@ classdef simulate
                         toaRMSE(noise,1) = toaRMSE(noise,1) + norm(pos - obj.toaPos(:, iter, step, noise));
                         kf1RMSE(noise,1) = kf1RMSE(noise,1) + norm(pos - obj.kf1x(:, iter, step, noise));
                         % ukfRMSE(noise,1) = ukfRMSE(noise,1) + norm(pos - obj.ukfx(:, iter, step, noise));
+
                     end
                 end
             end
 
+            for step = 2:obj.numPoints
+                pos = [step-1; step-1];
+                for noise = 1:length(obj.noiseVariance)
+                    pfRMSE(noise,1) = pfRMSE(noise,1) + norm(pos - obj.ptx(:, step, noise));
+                end
+            end
             toaRMSE = toaRMSE / (obj.iteration * (obj.numPoints-1));
             kf1RMSE = kf1RMSE / (obj.iteration * (obj.numPoints-1));
             % ukfRMSE = ukfRMSE / (obj.iteration * (obj.numPoints-1));
+            pfRMSE = pfRMSE / (obj.numPoints-1);
 
             figure;
             semilogx(obj.noiseVariance, toaRMSE, 'o-','DisplayName','TOA');
             hold on;
             semilogx(obj.noiseVariance, kf1RMSE, 'o-','DisplayName','KF1');
             % semilogx(obj.noiseVariance, ukfRMSE, 'o-','DisplayName','UKF');
+            semilogx(obj.noiseVariance, pfRMSE, 'o-','DisplayName','PF');
             xlabel('Noise Variance');
             ylabel('RMSE');
             legend;
