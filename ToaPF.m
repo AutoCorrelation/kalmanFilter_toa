@@ -4,8 +4,7 @@ function [xhat, particleTensor] = ToaPF(x, weight, B, u, A, Q, bias, pseudoInver
     % Generate particles based on pre simulation.
     % Generate particles based on GAUSSIAN distribution
     % 초기 난수는 가우시안 분포를 따르는 난수를 사용한다.
-    % P0 = 0.005309	-0.000024
-    %       -0.000024	0.005173
+
     Npt = size(weight, 2);
     particleTensor = zeros(2, Npt);
     xhat = zeros(2, 1);
@@ -23,13 +22,22 @@ function [xhat, particleTensor] = ToaPF(x, weight, B, u, A, Q, bias, pseudoInver
         xhat = xhat + tempWeight(j,1) * particleTensor(:,j);
     end
     % Resampling
-    % 중요한 파티클을 더 많이 살리기 위해 중요도 샘플링을 사용한다.
-    c = cumsum(tempWeight);
-    for j = 1:Npt
-        r = rand;
-        b = find(r <= c, 1, 'first');
-        particleTensor(:,j) = particleTensor(:,b);
-    end
+    % SIR
+    % c = cumsum(tempWeight);
+    % for j = 1:Npt
+    %     r = rand;
+    %     b = find(r <= c, 1, 'first');
+    %     if isempty(b)
+    %         b = Npt; % 만약 find가 빈 배열을 반환하면 마지막 인덱스를 사용
+    %     end
+    %     particleTensor(:,j) = particleTensor(:,b);
+    % end
+
+    wtc = cumsum(tempWeight);
+    rpt = rand(Npt,1);
+    [~, ind1]= sort([rpt; wtc]);
+    ind = find(ind1<=Npt)-(0:Npt-1)';
+    particleTensor = particleTensor(:,ind);
 end
 
 %-------------------------

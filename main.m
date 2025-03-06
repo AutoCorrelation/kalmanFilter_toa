@@ -1,6 +1,6 @@
 % https://github.com/AutoCorrelation/Sms2024
 if ~exist("obj","var")
-    obj = simulate(1e3, 11);
+    obj = simulate(1e2, 11);
     obj = setsquareAnchorPos(obj, 10);
     obj = generateRangingInfo(obj);
     obj = toa(obj);

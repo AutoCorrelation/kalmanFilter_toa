@@ -406,31 +406,31 @@ classdef simulate
             totalParticles = 500;
             % countIter = 1;
             obj.pfx = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance));
-            particleTensor = zeros(2, totalParticles, obj.numPoints, length(obj.noiseVariance));
             for countIter = 1:obj.iteration
-            for countStep = 1:obj.numPoints
-                for countNoise = 1:length(obj.noiseVariance)
-                    switch countStep
-                        case 1
-                            obj.pfx(:,countIter, countStep, countNoise) = [0; 0];
-                            velocity = zeros(2, length(obj.noiseVariance));
-                        case 2
-                            obj.pfx(:, countIter, countStep, countNoise) = obj.toaPos(:, countIter, countStep, countNoise);
-                        case 3
-                            obj.pfx(:, countIter, countStep, countNoise) = obj.toaPos(:, countIter, countStep, countNoise);
-                            velocity(:,countNoise) = (obj.pfx(:, countIter, countStep, countNoise) - obj.pfx(:, countIter, countStep-1, countNoise))  / 0.1;
-                            particleTensor(:,:,countStep,countNoise) = obj.pfx(:, countIter, countStep, countNoise)+ mvnrnd(zeros(2,1), obj.P0(:, :, countNoise), totalParticles)';
-                            weight = ones(2, totalParticles) / totalParticles;
-                        otherwise
-                            obj.reducedR(:,:,countIter, countStep, countNoise) = obj.pseudoInverseH*obj.liveR(:,:,countIter, countStep, countNoise)*obj.pseudoInverseH';
+                particleTensor = zeros(2, totalParticles, obj.numPoints, length(obj.noiseVariance));
+                for countStep = 1:obj.numPoints
+                    for countNoise = 1:length(obj.noiseVariance)
+                        switch countStep
+                            case 1
+                                obj.pfx(:,countIter, countStep, countNoise) = [0; 0];
+                                velocity = zeros(2, length(obj.noiseVariance));
+                            case 2
+                                obj.pfx(:, countIter, countStep, countNoise) = obj.toaPos(:, countIter, countStep, countNoise);
+                            case 3
+                                obj.pfx(:, countIter, countStep, countNoise) = obj.toaPos(:, countIter, countStep, countNoise);
+                                velocity(:,countNoise) = (obj.pfx(:, countIter, countStep, countNoise) - obj.pfx(:, countIter, countStep-1, countNoise))  / 0.1;
+                                particleTensor(:,:,countStep,countNoise) = obj.pfx(:, countIter, countStep, countNoise)+ mvnrnd(zeros(2,1), obj.P0(:, :, countNoise), totalParticles)';
+                                weight = ones(2, totalParticles) / totalParticles;
+                            otherwise
+                                obj.reducedR(:,:,countIter, countStep, countNoise) = obj.pseudoInverseH*obj.liveR(:,:,countIter, countStep, countNoise)*obj.pseudoInverseH';
 
-                            [obj.pfx(:, countIter, countStep, countNoise), particleTensor(:,:,countStep,countNoise)]= ...
-                                ToaPF(particleTensor(:,:,countStep-1,countNoise), weight, velocity(:, countNoise), 0.1, obj.A, obj.Q(:,:,countNoise), obj.w_bias(:, countNoise), obj.pseudoInverseH, obj.reducedR(:,:,countIter, countStep, countNoise), obj.z(:, countIter, countStep, countNoise));
-                            velocity(:, countNoise) = (obj.pfx(:, countIter, countStep, countNoise) - obj.pfx(:, countIter, countStep-1, countNoise))  / 0.1;
+                                [obj.pfx(:, countIter, countStep, countNoise), particleTensor(:,:,countStep,countNoise)]= ...
+                                    ToaPF(particleTensor(:,:,countStep-1,countNoise), weight, velocity(:, countNoise), 0.1, obj.A, obj.Q(:,:,countNoise), obj.w_bias(:, countNoise), obj.pseudoInverseH, obj.reducedR(:,:,countIter, countStep, countNoise), obj.z(:, countIter, countStep, countNoise));
+                                velocity(:, countNoise) = (obj.pfx(:, countIter, countStep, countNoise) - obj.pfx(:, countIter, countStep-1, countNoise))  / 0.1;
+                        end
+
                     end
-
                 end
-            end
             end
 
         end
