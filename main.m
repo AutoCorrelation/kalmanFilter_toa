@@ -5,7 +5,7 @@ if ~exist("obj","var")
     obj = generateRangingInfo(obj);
     obj = toa(obj);
     obj = getQ(obj);
-    obj = getR(obj);
+    % obj = getR(obj);
     obj = ToaKalmanFilter(obj);
     % obj = ToaUKF(obj);
     obj = ToaParticleFilter(obj);
