@@ -8,8 +8,9 @@ if ~exist("obj","var")
     % obj = getR(obj);
     obj = ToaKalmanFilter(obj);
     % obj = ToaUKF(obj);
-    obj = ToaParticleFilter(obj);
 end
+obj = ToaParticleFilter(obj);
+
 obj = resultPlot(obj);
 % obj = optimizeParam1(obj);
 % obj = optimizeParam2(obj);
