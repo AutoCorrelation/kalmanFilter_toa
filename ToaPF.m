@@ -10,12 +10,14 @@ function [xhat, particleTensor] = ToaPF(x, weight, B, u, A, Q, bias, pseudoInver
     xhat = zeros(2, 1);
     tempWeight = zeros(size(weight,2),1);
     reducedZ = pseudoInverseH*z;
+    wt = 1/Npt;
     % Prediction
     % 예측 오차랜덤 값을 Q를 기반으로 생성하되 스텝에 따라서 감소하도록 한다. (fading memory Q)
     for k = 1:Npt
-        particleTensor(:, k) = A * x(:,k) + B * u + mvnrnd(bias, Q, 1)';  % different random value for each particle(w_k)
+        particleTensor(:, k) = A * x(:,k) + B * u + mvnrnd(bias, Q, 1)';  % NON GAUSSIAN NOISE INPUT
         % xhat = xhat + weight(:,k) .* particleTensor(:,k);
-        tempWeight(k,1) =  mvnpdf(particleTensor(:,k),reducedZ,R);
+        % err = z-H*(particleTensor(:,k));
+        tempWeight(k,1) = wt * mvnpdf(particleTensor(:,k),reducedZ,R); %* exp((-1/(2*R(1)))*(err'*err))./((sqrt(2*pi))^size(z,1)*sqrt(R(1))); 
     end
     tempWeight = tempWeight / sum(tempWeight);
     for j = 1:Npt
@@ -32,12 +34,19 @@ function [xhat, particleTensor] = ToaPF(x, weight, B, u, A, Q, bias, pseudoInver
     %     end
     %     particleTensor(:,j) = particleTensor(:,b);
     % end
-
-    wtc = cumsum(tempWeight);
-    rpt = rand(Npt,1);
-    [~, ind1]= sort([rpt; wtc]);
-    ind = find(ind1<=Npt)-(0:Npt-1)';
-    particleTensor = particleTensor(:,ind);
+    
+    % Resampling step could have operation condition... N_eff < N_th = 2N/3
+    var_accum = 0;
+    for ind = 1:Npt
+        var_accum = var_accum + tempWeight(ind)^2;
+    end
+    if 1/var_accum < Npt/2
+        wtc = cumsum(tempWeight);
+        rpt = rand(Npt,1);
+        [~, ind1]= sort([rpt; wtc]);
+        ind = find(ind1<=Npt)-(0:Npt-1)';
+        particleTensor = particleTensor(:,ind);
+    end
 end
 
 %-------------------------

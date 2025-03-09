@@ -403,10 +403,12 @@ classdef simulate
         end
 
         function obj = ToaParticleFilter(obj)
-            totalParticles = 200;
+            totalParticles = 500;
             % countIter = 1;
+            
             obj.pfx = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance));
             for countIter = 1:obj.iteration
+                
                 particleTensor = zeros(2, totalParticles, obj.numPoints, length(obj.noiseVariance));
                 for countStep = 1:obj.numPoints
                     for countNoise = 1:length(obj.noiseVariance)
@@ -420,9 +422,10 @@ classdef simulate
                                 obj.pfx(:, countIter, countStep, countNoise) = obj.toaPos(:, countIter, countStep, countNoise);
                                 velocity(:,countNoise) = (obj.pfx(:, countIter, countStep, countNoise) - obj.pfx(:, countIter, countStep-1, countNoise))  / 0.1;
                                 particleTensor(:,:,countStep,countNoise) = ...
-                                    obj.pfx(:, countIter, countStep, countNoise)+ mvnrnd(zeros(2,1), obj.P0(:, :, countNoise), totalParticles)';
+                                    obj.pfx(:, countIter, countStep, countNoise)+ mvnrnd(zeros(2,1), obj.Q(:, :, 4), totalParticles)';
                                 weight = ones(2, totalParticles) / totalParticles;
                             otherwise
+                                
                                 obj.reducedR(:,:,countIter, countStep, countNoise) = ...
                                     obj.pseudoInverseH*obj.liveR(:,:,countIter, countStep, countNoise)*obj.pseudoInverseH';
 
@@ -434,6 +437,64 @@ classdef simulate
                     end
                 end
             end
+
+        end
+
+        function obj = optimizeToaParticleFilter(obj)
+            totalParticles = 200;
+            alphamax=9;
+            obj.pfx = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance),9);
+            for a = 1:alphamax
+                alpha = a/10;
+                for countIter = 1:obj.iteration
+                    Qbuf = obj.Q;
+                    particleTensor = zeros(2, totalParticles, obj.numPoints, length(obj.noiseVariance));
+                    for countStep = 1:obj.numPoints
+                        for countNoise = 1:length(obj.noiseVariance)
+                            switch countStep
+                                case 1
+                                    obj.pfx(:,countIter, countStep, countNoise) = [0; 0];
+                                    velocity = zeros(2, length(obj.noiseVariance));
+                                case 2
+                                    obj.pfx(:, countIter, countStep, countNoise,a) = obj.toaPos(:, countIter, countStep, countNoise);
+                                case 3
+                                    obj.pfx(:, countIter, countStep, countNoise,a) = obj.toaPos(:, countIter, countStep, countNoise);
+                                    velocity(:,countNoise) = (obj.pfx(:, countIter, countStep, countNoise,a) - obj.pfx(:, countIter, countStep-1, countNoise,a))  / 0.1;
+                                    particleTensor(:,:,countStep,countNoise) = ...
+                                        obj.pfx(:, countIter, countStep, countNoise,a)+ mvnrnd(zeros(2,1), obj.Q(:, :, countNoise), totalParticles)';
+                                    weight = ones(2, totalParticles) / totalParticles;
+                                otherwise
+                                    Qbuf(:, :, countNoise) = Qbuf(:, :, countNoise)*alpha;
+                                    obj.reducedR(:,:,countIter, countStep, countNoise) = ...
+                                        obj.pseudoInverseH*obj.liveR(:,:,countIter, countStep, countNoise)*obj.pseudoInverseH';
+
+                                    [obj.pfx(:, countIter, countStep, countNoise,a), particleTensor(:,:,countStep,countNoise)]= ...
+                                        ToaPF(particleTensor(:,:,countStep-1,countNoise), weight, velocity(:, countNoise), 0.1, obj.A, obj.Q(:,:,countNoise), obj.w_bias(:, countNoise), obj.pseudoInverseH, obj.reducedR(:,:,countIter, countStep, countNoise), obj.z(:, countIter, countStep, countNoise));
+                                    velocity(:, countNoise) = (obj.pfx(:, countIter, countStep, countNoise,a) - obj.pfx(:, countIter, countStep-1, countNoise,a))  / 0.1;
+                            end
+
+                        end
+                    end
+                end
+            end
+
+            optiRMSE = zeros(length(obj.noiseVariance),alphamax);
+            for iter = 1:obj.iteration
+                for step = 2:obj.numPoints
+                    pos = [step-1; step-1];
+                    for noise = 1:length(obj.noiseVariance)
+                        for a = 1:alphamax
+                            optiRMSE(noise,a) = optiRMSE(noise,a) + norm(pos - obj.pfx(:, iter, step, noise,a));
+                        end
+                    end
+                end
+            end
+            optiRMSE = optiRMSE / (obj.iteration * (obj.numPoints-1));
+            [minRMSE, minIdx] = min(optiRMSE, [], 2);
+            % figure;
+            semilogx(obj.noiseVariance, minRMSE, 'o-','displayName','OptiPF');
+            disp('optimal gamma: ');
+            disp(minIdx);
 
         end
 
