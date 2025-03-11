@@ -1,4 +1,4 @@
-function [xhat, particleTensor] = ToaPF(x, weight, B, u, A, Q, bias, pseudoInverseH, R, z)
+function [xhat, particleTensor] = ToaPF(x, weight, B, u, A, Q, bias, pseudoInverseH, R, z,errPos)
     % Idea of the Particle Filter
     % Weight dimension: apply weight to x vector
     % Generate particles based on pre simulation.
@@ -11,20 +11,22 @@ function [xhat, particleTensor] = ToaPF(x, weight, B, u, A, Q, bias, pseudoInver
     tempWeight = zeros(size(weight,2),1);
     % measVar=sqrt(diag(R)'*diag(R));
     reducedZ = pseudoInverseH*z;
-    std = 0.01;
+    
     wt = 1/Npt;
     % Prediction
     % 예측 오차랜덤 값을 Q를 기반으로 생성하되 스텝에 따라서 감소하도록 한다. (fading memory Q)
     for k = 1:Npt
-        particleTensor(:, k) = A * x(:,k) + B * u + mvnrnd(bias, Q, 1)';  % NON GAUSSIAN NOISE INPUT
+        % 기존 실험 데이터를 균일 하게 뽑는다.
+        index = ceil(1000*rand);
+        particleTensor(:, k) = A * x(:,k) + B(:,k) * u + errPos(:,index);  % NON GAUSSIAN NOISE INPUT
         % xhat = xhat + weight(:,k) .* particleTensor(:,k);
         % err = z-H*(particleTensor(:,k));
         err = reducedZ-particleTensor(:,k);
-        % escape tempWeight to be NaN. modifiy the std.
-        tempWeight(k,1) = wt * exp(-0.5*((err(1)^2/std^2)+(err(2)^2/std^2)))/(2*pi*std^2); 
-
+        % escape tempWeight(exp term=0) to be NaN. modifiy the std.
+        tempWeight(k,1) = wt * mvnpdf(reducedZ,particleTensor(:,k),R);
     end
     tempWeight = tempWeight / sum(tempWeight);
+
     for j = 1:Npt
         xhat = xhat + tempWeight(j,1) * particleTensor(:,j);
     end
@@ -45,7 +47,8 @@ function [xhat, particleTensor] = ToaPF(x, weight, B, u, A, Q, bias, pseudoInver
     for ind = 1:Npt
         var_accum = var_accum + tempWeight(ind)^2;
     end
-    if 1/var_accum < 2*Npt/3
+    Ess=1/var_accum;
+    if Ess < Npt/2
         wtc = cumsum(tempWeight);
         rpt = rand(Npt,1);
         [~, ind1]= sort([rpt; wtc]);
