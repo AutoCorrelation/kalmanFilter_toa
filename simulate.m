@@ -406,7 +406,7 @@ classdef simulate
 
         function obj = ToaParticleFilter(obj)
             % https://github.com/vatsl/ParticleFilter/blob/master/src/particle_filter.cpp
-            totalParticles = 200;
+            totalParticles = 1000;
             obj.pfx = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance));
             for countIter = 1:obj.iteration
                 particleTensor = zeros(2, totalParticles, obj.numPoints, length(obj.noiseVariance));
@@ -419,17 +419,17 @@ classdef simulate
                             case 2
                                 obj.pfx(:, countIter, countStep, countNoise) = obj.toaPos(:, countIter, countStep, countNoise);
                                 particleTensor(:,:,countStep,countNoise) = ...
-                                    obj.pfx(:, countIter, countStep, countNoise) + mvnrnd(zeros(2,1), obj.Q(:, :, countNoise), totalParticles)';
+                                    obj.pfx(:, countIter, countStep, countNoise) + mvnrnd(zeros(2,1), obj.Q(:, :, 5), totalParticles)';
                             case 3
                                 obj.pfx(:, countIter, countStep, countNoise) = obj.toaPos(:, countIter, countStep, countNoise);
 
                                 particleTensor(:,:,countStep,countNoise) = ...
-                                    obj.pfx(:, countIter, countStep, countNoise) + mvnrnd(zeros(2,1), obj.Q(:, :, countNoise), totalParticles)';
+                                    obj.pfx(:, countIter, countStep, countNoise) + mvnrnd(zeros(2,1), obj.Q(:, :, 5), totalParticles)';
                                 velocity(:, :, countStep,countNoise) = (particleTensor(:,:,countStep,countNoise) - particleTensor(:,:,countStep-1,countNoise)) / 0.1;
                                 weight = ones(2, totalParticles) / totalParticles;
                             otherwise
                                 obj.reducedR(:,:,countIter, countStep, countNoise) = ...
-                                    obj.pseudoInverseH*obj.liveR(:,:,countIter, countStep, countNoise)*obj.pseudoInverseH';
+                                    7 * obj.pseudoInverseH*obj.liveR(:,:,countIter, countStep, countNoise)*obj.pseudoInverseH';
 
                                 [obj.pfx(:, countIter, countStep, countNoise), particleTensor(:,:,countStep,countNoise)]= ...
                                     ToaPF(particleTensor(:,:,countStep-1,countNoise), weight, velocity(:,:,countStep, countNoise), 0.1, obj.A, obj.Q(:,:,countNoise), obj.w_bias(:, countNoise), obj.pseudoInverseH, obj.reducedR(:,:,countIter, countStep, countNoise), obj.z(:, countIter, countStep, countNoise), obj.errorPos(:,:,1,countNoise));
@@ -442,7 +442,7 @@ classdef simulate
 
 
         function obj = optimizeToaParticleFilter(obj)
-            totalParticles = 200;
+            totalParticles = 100;
             alphaMax = 9;
             obj.pfx = zeros(2, obj.iteration, obj.numPoints, length(obj.noiseVariance),alphaMax);
 

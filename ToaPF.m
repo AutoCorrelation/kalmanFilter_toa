@@ -23,7 +23,7 @@ function [xhat, particleTensor] = ToaPF(x, weight, B, u, A, Q, bias, pseudoInver
         % err = z-H*(particleTensor(:,k));
         err = reducedZ-particleTensor(:,k);
         % escape tempWeight(exp term=0) to be NaN. modifiy the std.
-        tempWeight(k,1) = wt * mvnpdf(reducedZ,particleTensor(:,k),R);
+        tempWeight(k,1) = mvnpdf(reducedZ,particleTensor(:,k),R);
     end
     tempWeight = tempWeight / sum(tempWeight);
 
