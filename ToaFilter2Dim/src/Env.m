@@ -23,7 +23,7 @@ classdef Env
             
             z = zeros(6, lnumIterations, lnumPoints, 5);
             toaPos = zeros(2, lnumIterations, lnumPoints, 5);
-            
+            R = zeros(6, 6, lnumIterations, lnumPoints, 5);
             H = [...
                 0, -20
                 20, -20
@@ -48,11 +48,20 @@ classdef Env
                         ranging(3, 1)^2 - ranging(4, 1)^2 + 10^2];
 
                         toaPos(:,i,p,n) = pinvH * z(:,i,p,n);
+
+                        R(:,:,i,p,n) = [4*obj.noiseVariance(n)*(ranging(1,1)^2+ranging(2,1)^2) 4*obj.noiseVariance(n)*(ranging(1,1)^2) 4*obj.noiseVariance(n)*(ranging(1,1)^2) -4*obj.noiseVariance(n)*(ranging(2,1)^2) -4*obj.noiseVariance(n)*(ranging(2,1)^2) 0;...
+                                    4*obj.noiseVariance(n)*(ranging(1,1)^2) 4*obj.noiseVariance(n)*(ranging(1,1)^2+ranging(3,1)^2) 4*obj.noiseVariance(n)*(ranging(1,1)^2) 4*obj.noiseVariance(n)*(ranging(3,1)^2) 0 -4*obj.noiseVariance(n)*(ranging(3,1)^2);...
+                                    4*obj.noiseVariance(n)*(ranging(1,1)^2) 4*obj.noiseVariance(n)*(ranging(1,1)^2) 4*obj.noiseVariance(n)*(ranging(1,1)^2+ranging(4,1)^2) 0 4*obj.noiseVariance(n)*(ranging(4,1)^2) 4*obj.noiseVariance(n)*(ranging(4,1)^2);...
+                                    -4*obj.noiseVariance(n)*(ranging(2,1)^2) 4*obj.noiseVariance(n)*(ranging(3,1)^2) 0 4*obj.noiseVariance(n)*(ranging(2,1)^2+ranging(3,1)^2) 4*obj.noiseVariance(n)*(ranging(2,1)^2) -4*obj.noiseVariance(n)*(ranging(3,1)^2);...
+                                    -4*obj.noiseVariance(n)*(ranging(2,1)^2) 0 4*obj.noiseVariance(n)*(ranging(4,1)^2) 4*obj.noiseVariance(n)*(ranging(2,1)^2) 4*obj.noiseVariance(n)*(ranging(2,1)^2+ranging(4,1)^2) 4*obj.noiseVariance(n)*(ranging(4,1)^2);...
+                                    0 -4*obj.noiseVariance(n)*(ranging(3,1)^2) 4*obj.noiseVariance(n)*(ranging(4,1)^2) -4*obj.noiseVariance(n)*(ranging(3,1)^2) 4*obj.noiseVariance(n)*(ranging(4,1)^2) 4*obj.noiseVariance(n)*(ranging(3,1)^2+ranging(4,1)^2)
+                                    ];
                     end
                 end
             end
             save('../data/z.mat','z');
             save('../data/toaPos.mat','toaPos');
+            save('../data/R.mat','R');
 
             Q = zeros(2, 2, 5);
             P0 = zeros(2,2,5);
@@ -81,6 +90,7 @@ classdef Env
                 writematrix(P0(:, :, n), strcat('../data/P0', num2str(n), '.csv'));
                 writematrix(processNoise(:, :, n), strcat('../data/processNoise', num2str(n), '.csv'));
                 writematrix(processbias(:, n), strcat('../data/processbias', num2str(n), '.csv'));
+                writematrix(toaNoise(:, :, n), strcat('../data/toaNoise', num2str(n), '.csv'));
             end
         end
     end
