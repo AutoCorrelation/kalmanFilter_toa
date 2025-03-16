@@ -29,7 +29,7 @@ classdef ParticleFilter
             end
         end
 
-        function y = sampling(obj, x)
+        function y = sampling(obj, x) % CANNOT ENHANCED
             y = zeros(2, obj.numParticles);
             for k = 1:obj.numParticles
                 index = ceil(size(obj.toaNoise, 2) * rand);
@@ -51,9 +51,10 @@ classdef ParticleFilter
             y = zeros(size(x));
             for k = 1:obj.numParticles
                 index = ceil(size(obj.processNoise, 2) * rand);
+                noise = obj.processNoise(:, index);
                 % index = k;
-                y(:, k) = x(:, k) + B(:, k) * u + obj.processNoise(:, index) * exp(-gamma*(countStep-2));
-                % y(:, k) = x(:, k) + B(:, k) * u + obj.processNoise(:, index) * gamma^(countStep-2);
+                y(:, k) = x(:, k) + B(:, k) * u + noise * exp(-gamma*(countStep-2));
+                % y(:, k) = x(:, k) + B(:, k) * u + noise * gamma^(countStep-2);
             end
         end
 
@@ -97,6 +98,28 @@ classdef ParticleFilter
                 [~, ind1] = sort([rpt; wtc]);
                 ind = find(ind1 <= Npt) - (0:Npt-1)';
                 y = x(:, ind);
+            else
+                y = x;
+            end
+        end
+
+        function y = resample2(~, x, w)
+            var_accum = 0;
+            Npt = length(w);
+            for ind = 1:Npt
+                var_accum = var_accum + w(ind)^2;
+            end
+            Ess = 1 / var_accum;
+            if Ess < Npt*2 / 3
+                c = cumsum(w);
+                for j = 1:Npt
+                    r = rand;
+                    b = find(r <= c, 1, 'first');
+                    if isempty(b)
+                        b = Npt; % 만약 find가 빈 배열을 반환하면 마지막 인덱스를 사용
+                    end
+                    y(:,j) = x(:,b);
+                end
             else
                 y = x;
             end

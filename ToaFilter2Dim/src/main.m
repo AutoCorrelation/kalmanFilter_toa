@@ -14,7 +14,7 @@ load('../data/R.mat');
 %
 % parameters
 params = struct();
-params.numParticles = 500;
+params.numParticles = 2000;
 params.numIterations = 100; %size(toaPos, 2);
 params.numPoints = size(toaPos, 3);
 params.numNoise = size(toaPos, 4);
@@ -49,11 +49,12 @@ for countNoise = 1:params.numNoise
                 pf_vel(:, :, countPoint, countIter) = pf_particles(:, :, countPoint, countIter) - pf_particles(:, :, countPoint-1, countIter);
             else
                 % pf_particles(:, :, countPoint, countIter) = predict(pf, pf_particles(:, :, countPoint-1, countIter), pf_vel(:, :, countPoint-1, countIter), 1);
-                pf_particles(:, :, countPoint, countIter) = predictParam(pf, pf_particles(:, :, countPoint-1, countIter), pf_vel(:, :, countPoint-1, countIter), 1, countPoint, 3);
+                pf_particles(:, :, countPoint, countIter) = predictParam(pf, pf_particles(:, :, countPoint-1, countIter), pf_vel(:, :, countPoint-1, countIter), 1, countPoint, 0.5);
                 pf_weights(:, countPoint, countIter) = update(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter), z(:, countIter, countPoint, countNoise), params.H, R(:, :, countIter, countPoint, countNoise));
                 % pf_weights(:, countPoint, countIter) = updateParam(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter), z(:, countIter, countPoint, countNoise), params.H, R(:, :, countIter, countPoint, countNoise),0.3);
                 pf_estimatedPos(:, countPoint, countIter) = estimate(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter));
                 pf_particles(:, :, countPoint, countIter) = resample(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter));
+                % pf_particles(:, :, countPoint, countIter) = resample2(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter));
                 pf_vel(:, :, countPoint, countIter) = pf_particles(:, :, countPoint, countIter) - pf_particles(:, :, countPoint-1, countIter);
             end
         end
