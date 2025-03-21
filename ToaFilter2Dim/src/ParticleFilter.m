@@ -29,7 +29,7 @@ classdef ParticleFilter
             end
         end
 
-        function y = sampling(obj, x)
+        function y = sampling(obj, x) % CANNOT ENHANCED
             y = zeros(2, obj.numParticles);
             for k = 1:obj.numParticles
                 index = ceil(size(obj.toaNoise, 2) * rand);
@@ -51,9 +51,10 @@ classdef ParticleFilter
             y = zeros(size(x));
             for k = 1:obj.numParticles
                 index = ceil(size(obj.processNoise, 2) * rand);
+                noise = obj.processNoise(:, index);
                 % index = k;
-                y(:, k) = x(:, k) + B(:, k) * u + obj.processNoise(:, index) * exp(-gamma*(countStep-2));
-                % y(:, k) = x(:, k) + B(:, k) * u + obj.processNoise(:, index) * gamma^(countStep-2);
+                y(:, k) = x(:, k) + B(:, k) * u + noise * exp(-gamma*(countStep-2));
+                % y(:, k) = x(:, k) + B(:, k) * u + noise * gamma^(countStep-2);
             end
         end
 
