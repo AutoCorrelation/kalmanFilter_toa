@@ -14,8 +14,8 @@ load('../data/R.mat');
 %
 % parameters
 params = struct();
-params.numParticles = 500;
-params.numIterations = 100; %size(toaPos, 2);
+params.numParticles = 1000;
+params.numIterations = 1000; %size(toaPos, 2);
 params.numPoints = size(toaPos, 3);
 params.numNoise = size(toaPos, 4);
 params.H = [...
@@ -30,6 +30,7 @@ pinvH = pinv(params.H);
 % Particlefilter
 RSME = RSME();
 pf_RMSE = zeros(params.numNoise, 1);
+tic
 for countNoise = 1:params.numNoise
 % for countNoise = 5
     pf = ParticleFilter(countNoise, params.numParticles);
@@ -50,11 +51,20 @@ for countNoise = 1:params.numNoise
             else
                 % pf_particles(:, :, countPoint, countIter) = predict(pf, pf_particles(:, :, countPoint-1, countIter), pf_vel(:, :, countPoint-1, countIter), 1);
                 pf_particles(:, :, countPoint, countIter) = predictParam(pf, pf_particles(:, :, countPoint-1, countIter), pf_vel(:, :, countPoint-1, countIter), 1, countPoint, 3);
+
                 pf_weights(:, countPoint, countIter) = update(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter), z(:, countIter, countPoint, countNoise), params.H, R(:, :, countIter, countPoint, countNoise));
                 % pf_weights(:, countPoint, countIter) = updateParam(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter), z(:, countIter, countPoint, countNoise), params.H, R(:, :, countIter, countPoint, countNoise),0.3);
+
                 pf_estimatedPos(:, countPoint, countIter) = estimate(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter));
+                % resampling --------------------------------------------------------
                 pf_particles(:, :, countPoint, countIter) = resample(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter));
-                pf_vel(:, :, countPoint, countIter) = pf_particles(:, :, countPoint, countIter) - pf_particles(:, :, countPoint-1, countIter);
+                % pf_particles(:, :, countPoint, countIter) = metropolis_resampling(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter));
+                % pf_particles(:, :, countPoint, countIter) = multinomial_resampling(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter));
+                % pf_particles(:, :, countPoint, countIter) = systematic_resampling(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter));
+                % pf_particles(:, :, countPoint, countIter) = stratified_resampling(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter));
+                % pf_particles(:, :, countPoint, countIter) = residual_resampling(pf, pf_particles(:, :, countPoint, countIter), pf_weights(:, countPoint, countIter));
+                
+                pf_vel(:, :, countPoint, countIter) = pf_estimatedPos(:, countPoint, countIter)*ones(1,params.numParticles) - pf_particles(:, :, countPoint-1, countIter);
             end
         end
     end
@@ -62,4 +72,4 @@ for countNoise = 1:params.numNoise
     % error
     pf_RMSE(countNoise) = getRSME(RSME, pf_estimatedPos);
 end
-
+toc
