@@ -8,10 +8,12 @@ classdef RSME
         end
 
         function y = getRSME(~, estimatedPos)
-            y = 0;
+            y = zeros(size(estimatedPos, 4),1);
             for i = 1:size(estimatedPos, 3)
                 for p = 1:size(estimatedPos, 2)
-                    y = y + norm(estimatedPos(:, p, i) - [p; p]);
+                    for n = 1:size(estimatedPos, 4)
+                        y(n) = y(n) + norm(estimatedPos(:, p, i, n) - [p; p]);
+                    end
                 end
             end
             y = y / (size(estimatedPos, 2) * size(estimatedPos, 3));
