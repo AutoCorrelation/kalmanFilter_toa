@@ -8,25 +8,8 @@ classdef ParticleFilter
     methods
         function obj = ParticleFilter(Noise, numParticles)
             obj.numParticles = numParticles;
-            switch Noise
-                case 1
-                    obj.processNoise = load('../data/processNoise1.csv');
-                    obj.toaNoise = load('../data/toaNoise1.csv');
-                case 2
-                    obj.processNoise = load('../data/processNoise2.csv');
-                    obj.toaNoise = load('../data/toaNoise2.csv');
-                case 3
-                    obj.processNoise = load('../data/processNoise3.csv');
-                    obj.toaNoise = load('../data/toaNoise3.csv');
-                case 4
-                    obj.processNoise = load('../data/processNoise4.csv');
-                    obj.toaNoise = load('../data/toaNoise4.csv');
-                case 5
-                    obj.processNoise = load('../data/processNoise5.csv');
-                    obj.toaNoise = load('../data/toaNoise5.csv');
-                otherwise
-                    error('Invalid Noise value. Please choose a value between 1 and 5.');
-            end
+                obj.processNoise = load(['../data/processNoise',num2str(Noise),'.csv']);
+                obj.toaNoise = load(['../data/toaNoise',num2str(Noise),'.csv']);
         end
 
         function y = sampling(obj, x) % CANNOT ENHANCED

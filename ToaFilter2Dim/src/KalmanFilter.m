@@ -7,50 +7,32 @@ classdef KalmanFilter
     
     properties
         pNoiseCov   % Process noise covariance
+        bias        % Bias
+        K         % Kalman gain
+        H        % Measurement matrix
     end
     
     methods
-        function obj = KalmanFilter(Noise)
-            %KALMANFILTER 이 클래스의 인스턴스 생성
-            %   자세한 설명 위치
-            switch Noise
-                case 1
-                    obj.pNoiseCov = load('../data/Q1.csv');
-                case 2
-                    obj.pNoiseCov = load('../data/Q2.csv');
-                case 3
-                    obj.pNoiseCov = load('../data/Q3.csv');
-                case 4
-                    obj.pNoiseCov = load('../data/Q4.csv');
-                case 5
-                    obj.pNoiseCov = load('../data/Q5.csv');
-                otherwise
-                    error('Invalid Noise value. Please choose a value between 1 and 5.');
-            end
-            
+        function obj = KalmanFilter(Noise, H)
+            obj.pNoiseCov = load(['../data/Q', num2str(Noise), '.csv']);
+            obj.bias = load(['../data/processbias', num2str(Noise), '.csv']);
+            obj.H = H;
         end
         
-        function y = predict(obj,stateStruct, B, u, bias)
-            x = stateStruct.state;
-            P = stateStruct.errCov;
-
-            y.state = x + B * u + bias;
-            y.errCov = P + obj.pNoiseCov;
+        function [xhat, Phat] = predict(obj,x, P, B, u)
+            xhat = x + B * u + obj.bias;
+            Phat = P + obj.pNoiseCov;
         end
         
 
-        function y = update(~,stateStruct, R)
-            P = stateStruct.errCov;
-            R = R + 1e-6 * eye(size(R));
-            K = P * H' / (H * P * H' + R);
-            y = K;
+        function obj = update(obj,P, R)
+            R = R + 1e-6 * eye(size(R)); % Add small value to avoid singularity
+            obj.K = P * obj.H' / (obj.H * P * obj.H' + R);
         end
 
-        function y = estimate(~,stateStruct, K, z, H)
-            x = stateStruct.state;
-            P = stateStruct.errCov;
-            y.state = x + K * (z - H * x);
-            y.errCov = (eye(size(P)) - K * H) * P;
+        function [x, P] = estimate(obj, x, P, z)
+            x = x + obj.K * (z - obj.H * x);
+            P = (eye(size(P)) - obj.K * obj.H) * P;
         end
     end
 end

@@ -6,12 +6,13 @@ if yesorno == 'Y'
     Env = Env(1e4);
     Env.preSimulate();
 end
-%%
+
 % load data
 load('../data/z.mat');
 load('../data/toaPos.mat');
 load('../data/R.mat');
 %
+RSME = RSME();
 % parameters
 params = struct();
 params.numParticles = 1000;
@@ -27,14 +28,7 @@ params.H = [...
     0, 20];
 pinvH = pinv(params.H);
 
-% Kalmanfilter
-
-
-% Particlefilter
-RSME = RSME();
-
-
-% Particle Filter 데이터 구조체 초기화
+%% Particlefilter
 pf_data = struct();
 pf_data.particles = zeros(2, params.numParticles, params.numPoints, params.numIterations, params.numNoise);
 pf_data.vel = zeros(size(pf_data.particles));
@@ -75,5 +69,32 @@ for countNoise = 1:params.numNoise
         end
     end
 end
+pf_data = RSME.getRSME(pf_data.estimatedPos);
 
-pf_data.RMSE = RSME.getRSME(pf_data.estimatedPos);
+%% Kalman Filter
+kf_data = struct();
+kf_data.estimatedPos = zeros(2, params.numPoints, params.numIterations, params.numNoise);
+kf_data.errCov = zeros(2, 2, params.numPoints, params.numIterations, params.numNoise);
+kf_data.vel = zeros(size(kf_data.estimatedPos));
+kf_data.RMSE = zeros(params.numNoise, 1);
+
+for countNoise = 1:params.numNoise
+% for countNoise = 5
+    kf = KalmanFilter(countNoise, params.H);
+    for countIter = 1:params.numIterations
+        for countPoint = 2:params.numPoints
+            if countPoint < 3
+                kf_data.estimatedPos(:, countPoint-1, countIter, countNoise) = toaPos(:, countIter, countPoint-1, countNoise);
+                kf_data.estimatedPos(:, countPoint, countIter, countNoise) = toaPos(:, countIter, countPoint, countNoise);
+                kf_data.vel(:, countPoint, countIter, countNoise) = kf_data.estimatedPos(:, countPoint, countIter, countNoise) - kf_data.estimatedPos(:, countPoint-1, countIter, countNoise);
+            else
+                [xhat, Phat] = kf.predict(kf_data.estimatedPos(:, countPoint-1, countIter, countNoise), kf_data.errCov(:, :, countPoint-1, countIter, countNoise), kf_data.vel(:, countPoint-1, countIter, countNoise), 1);
+                kf = kf.update(Phat, R(:, :, countIter, countPoint, countNoise));
+                [kf_data.estimatedPos(:, countPoint, countIter, countNoise), kf_data.errCov(:,:, countPoint, countIter, countNoise)] = kf.estimate(xhat, Phat, z(:, countIter, countPoint, countNoise));
+                kf_data.vel(:, countPoint, countIter, countNoise) = kf_data.estimatedPos(:, countPoint, countIter, countNoise) - kf_data.estimatedPos(:, countPoint-1, countIter, countNoise);
+            end
+        end
+    end
+end
+
+kf_data.RMSE = RSME.getRSME(kf_data.estimatedPos);
