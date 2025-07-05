@@ -69,7 +69,7 @@ for countNoise = 1:params.numNoise
         end
     end
 end
-pf_data = RSME.getRSME(pf_data.estimatedPos);
+pf_data.RSME = RSME.getRSME(pf_data.estimatedPos);
 
 %% Kalman Filter
 kf_data = struct();
