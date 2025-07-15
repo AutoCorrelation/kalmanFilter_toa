@@ -1,13 +1,13 @@
-classdef RSME
+classdef RMSE
     properties
         
     end
 
     methods
-        function obj = RSME()
+        function obj = RMSE()
         end
 
-        function y = getRSME(~, estimatedPos)
+        function y = getRMSE(~, estimatedPos)
             y = zeros(size(estimatedPos, 4),1);
             for i = 1:size(estimatedPos, 3)
                 for p = 1:size(estimatedPos, 2)

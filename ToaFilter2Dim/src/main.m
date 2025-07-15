@@ -12,11 +12,11 @@ load('../data/z.mat');
 load('../data/toaPos.mat');
 load('../data/R.mat');
 %
-RSME = RSME();
+RMSE = RMSE();
 % parameters
 params = struct();
-params.numParticles = 1000;
-params.numIterations = 100; %size(toaPos, 2);
+params.numParticles = 5000;
+params.numIterations = 1; %size(toaPos, 2);
 params.numPoints = size(toaPos, 3);
 params.numNoise = size(toaPos, 4);
 params.H = [...
@@ -69,7 +69,7 @@ for countNoise = 1:params.numNoise
         end
     end
 end
-pf_data.RSME = RSME.getRSME(pf_data.estimatedPos);
+pf_data.RMSE = RMSE.getRMSE(pf_data.estimatedPos);
 
 %% Kalman Filter
 kf_data = struct();
@@ -97,4 +97,11 @@ for countNoise = 1:params.numNoise
     end
 end
 
-kf_data.RMSE = RSME.getRSME(kf_data.estimatedPos);
+kf_data.RMSE = RMSE.getRMSE(kf_data.estimatedPos);
+%% Plotting
+noisevalue = [0.01;0.1;1;10;100];
+figure;
+semilogx(noisevalue,kf_data.RMSE,'DisplayName','Kalman Filter');
+hold on;
+semilogx(noisevalue,pf_data.RMSE,'DisplayName','Particle Filter');
+legend show;
